@@ -2,7 +2,7 @@ import { pinJSONToIPFS } from "./pinata.js";
 require("dotenv").config();
 const alchemyKey = process.env.REACT_APP_ALCHEMY_KEY;
 const contractABI = require("../contract-abi.json");
-const contractAddress = "0x4C4a07F737Bf57F6632B6CAB089B78f62385aCaE";
+const contractAddress = "0x8dD3345E472F796599713064fe84A2645d3e4Cbb";
 const { createAlchemyWeb3 } = require("@alch/alchemy-web3");
 const web3 = createAlchemyWeb3(alchemyKey);
 
@@ -109,33 +109,43 @@ export const mintNFT = async (url, name, description) => {
       status: "😢 Something went wrong while uploading your tokenURI.",
     };
   }
-  const tokenURI = pinataResponse.pinataUrl;
+  const tokenURI = "pinataResponse.pinataUrl";
 
   window.contract = await new web3.eth.Contract(contractABI, contractAddress);
 
-  const transactionParameters = {
-    to: contractAddress, // Required except during contract publications.
-    from: window.ethereum.selectedAddress, // must match user's active address.
-    data: window.contract.methods
-      .mintNFT(window.ethereum.selectedAddress, tokenURI)
-      .encodeABI(),
-  };
+  const ownerAddr = await window.contract.methods.owner().call();
 
-  try {
-    const txHash = await window.ethereum.request({
-      method: "eth_sendTransaction",
-      params: [transactionParameters],
-    });
-    return {
-      success: true,
-      status:
-        "✅ Check out your transaction on Etherscan: https://ropsten.etherscan.io/tx/" +
-        txHash,
+  console.log("Owner ====> ", ownerAddr);
+  console.log("OwnerLowerCase ====> ", (ownerAddr).toLowerCase() );
+
+  if ((ownerAddr).toLowerCase() === (window.ethereum.selectedAddress).toLowerCase()) {
+    const transactionParameters = {
+      to: contractAddress, // Required except during contract publications.
+      from: window.ethereum.selectedAddress, // must match user's active address.
+      data: window.contract.methods.create(tokenURI, name).encodeABI(),
     };
-  } catch (error) {
+
+    try {
+      const txHash = await window.ethereum.request({
+        method: "eth_sendTransaction",
+        params: [transactionParameters],
+      });
+      return {
+        success: true,
+        status:
+          "✅ Check out your transaction on Polygonscan: https://mumbai.polygonscan.io/tx/" +
+          txHash,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        status: "😥 Something went wrong: " + error.message,
+      };
+    }
+  } else {
+    alert("Only Owner can mint the NFT");
     return {
       success: false,
-      status: "😥 Something went wrong: " + error.message,
     };
   }
 };
